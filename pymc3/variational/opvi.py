@@ -6,10 +6,10 @@ reveal the true nature of underlying problem. In some applications it can
 yield unreliable decisions.
 
 Recently on NIPS 2017 `OPVI  <https://arxiv.org/abs/1610.09033/>`_ framework
-was presented. It generalizes variational inverence so that the problem is
+was presented. It generalizes variational inference so that the problem is
 build with blocks. The first and essential block is Model itself. Second is
 Approximation, in some cases :math:`log Q(D)` is not really needed. Necessity
-depends on the third and forth part of that black box, Operator and
+depends on the third and fourth part of that black box, Operator and
 Test Function respectively.
 
 Operator is like an approach we use, it constructs loss from given Model,
@@ -45,6 +45,7 @@ from .updates import adagrad_window
 from ..blocking import (
     ArrayOrdering, DictToArrayBijection, VarMap
 )
+from ..backends import NDArray, Text, SQLite, HDF5
 from ..model import modelcontext
 from ..theanof import tt_rng, change_flags, identity
 from ..util import get_default_varnames
@@ -144,7 +145,7 @@ def _warn_not_used(smth, where):
     warnings.warn('`%s` is not used for %s and ignored' % (smth, where))
 
 
-class ObjectiveFunction(object):
+class ObjectiveFunction:
     """Helper class for construction loss and updates for variational inference
 
     Parameters
@@ -358,7 +359,7 @@ class ObjectiveFunction(object):
         return m * self.op.T(a)
 
 
-class Operator(object):
+class Operator:
     R"""**Base class for Operator**
 
     Parameters
@@ -465,7 +466,7 @@ def collect_shared_to_list(params):
             'Unknown type %s for %r, need dict or None')
 
 
-class TestFunction(object):
+class TestFunction:
     def __init__(self):
         self._inited = False
         self.shared_params = None
@@ -759,13 +760,13 @@ class Group(WithMemoization):
             if vfam is not None and params is not None:
                 raise TypeError('Cannot call Group with both `vfam` and `params` provided')
             elif vfam is not None:
-                return super(Group, cls).__new__(cls.group_for_short_name(vfam))
+                return super().__new__(cls.group_for_short_name(vfam))
             elif params is not None:
-                return super(Group, cls).__new__(cls.group_for_params(params))
+                return super().__new__(cls.group_for_params(params))
             else:
                 raise TypeError('Need to call Group with either `vfam` or `params` provided')
         else:
-            return super(Group, cls).__new__(cls)
+            return super().__new__(cls)
 
     def __init__(self, group,
                  vfam=None,
@@ -1569,7 +1570,8 @@ class Approximation(WithMemoization):
 
         return inner
 
-    def sample(self, draws=500, include_transformed=True):
+    def sample(self, draws=500, include_transformed=True, backend='ndarray', 
+               name=None):
         """Draw samples from variational posterior.
 
         Parameters
@@ -1578,6 +1580,11 @@ class Approximation(WithMemoization):
             Number of random samples.
         include_transformed : `bool`
             If True, transformed variables are also sampled. Default is False.
+        backend : `str`
+            Trace backend type to use. Valid entries include: 'ndarray' (default),
+            'text', 'sqlite', 'hdf5'.
+        name : `str`
+            Name for backend (required for non-NDArray backends). Default is None.
 
         Returns
         -------
@@ -1588,8 +1595,10 @@ class Approximation(WithMemoization):
                                             include_transformed=include_transformed)
         samples = self.sample_dict_fn(draws)  # type: dict
         points = ({name: records[i] for name, records in samples.items()} for i in range(draws))
-        trace = pm.sampling.NDArray(model=self.model, vars=vars_sampled, test_point={
-            name: records[0] for name, records in samples.items()
+        _backends = dict(ndarray=NDArray, text=Text, hdf5=HDF5, sqlite=SQLite)
+
+        trace = _backends[backend](name=name, model=self.model, vars=vars_sampled, test_point={
+                name: records[0] for name, records in samples.items()
         })
         try:
             trace.setup(draws=draws, chain=0)

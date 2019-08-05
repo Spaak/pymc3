@@ -57,6 +57,8 @@ from .distribution import TensorType
 from .distribution import draw_values
 from .distribution import generate_samples
 
+from .simulator import Simulator
+
 from .mixture import Mixture
 from .mixture import NormalMixture
 
@@ -156,4 +158,6 @@ __all__ = ['Uniform',
            'LogitNormal',
            'Interpolated',
            'Bound',
+           'Rice',
+           'Simulator'
            ]

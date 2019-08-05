@@ -10,7 +10,7 @@ import pytest
 import theano
 
 
-class ModelBackendSetupTestCase(object):
+class ModelBackendSetupTestCase:
     """Set up a backend trace.
 
     Provides the attributes
@@ -69,7 +69,7 @@ class ModelBackendSetupTestCase(object):
             remove_file_or_directory(self.name)
 
 
-class StatsTestCase(object):
+class StatsTestCase:
     """Test for init and setup of backups.
 
     Provides the attributes
@@ -105,7 +105,7 @@ class StatsTestCase(object):
             remove_file_or_directory(self.name)
 
 
-class ModelBackendSampledTestCase(object):
+class ModelBackendSampledTestCase:
     """Setup and sample a backend trace.
 
     Provides the attributes
@@ -124,13 +124,20 @@ class ModelBackendSampledTestCase(object):
 
     Children may define
     - sampler_vars
+    - write_partial_chain
     """
     @classmethod
     def setup_class(cls):
         cls.test_point, cls.model, _ = models.beta_bernoulli(cls.shape)
+
+        if hasattr(cls, 'write_partial_chain') and cls.write_partial_chain is True:
+            cls.chain_vars = cls.model.unobserved_RVs[1:]
+        else:
+            cls.chain_vars = cls.model.unobserved_RVs
+
         with cls.model:
-            strace0 = cls.backend(cls.name)
-            strace1 = cls.backend(cls.name)
+            strace0 = cls.backend(cls.name, vars=cls.chain_vars)
+            strace1 = cls.backend(cls.name, vars=cls.chain_vars)
 
         if not hasattr(cls, 'sampler_vars'):
             cls.sampler_vars = None
@@ -435,7 +442,7 @@ class DumpLoadTestCase(ModelBackendSampledTestCase):
     """
     @classmethod
     def setup_class(cls):
-        super(DumpLoadTestCase, cls).setup_class()
+        super().setup_class()
         try:
             with cls.model:
                 cls.dumped = cls.load_func(cls.name)
@@ -459,7 +466,7 @@ class DumpLoadTestCase(ModelBackendSampledTestCase):
         trace = self.mtrace
         dumped = self.dumped
         for chain in trace.chains:
-            for varname in self.test_point.keys():
+            for varname in self.chain_vars:
                 data = trace.get_values(varname, chains=[chain])
                 dumped_data = dumped.get_values(varname, chains=[chain])
                 npt.assert_equal(data, dumped_data)
@@ -479,12 +486,12 @@ class BackendEqualityTestCase(ModelBackendSampledTestCase):
     def setup_class(cls):
         cls.backend = cls.backend0
         cls.name = cls.name0
-        super(BackendEqualityTestCase, cls).setup_class()
+        super().setup_class()
         cls.mtrace0 = cls.mtrace
 
         cls.backend = cls.backend1
         cls.name = cls.name1
-        super(BackendEqualityTestCase, cls).setup_class()
+        super().setup_class()
         cls.mtrace1 = cls.mtrace
 
     @classmethod

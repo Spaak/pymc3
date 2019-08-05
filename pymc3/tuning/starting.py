@@ -41,7 +41,7 @@ def find_MAP(start=None, vars=None, method="L-BFGS-B",
         Whether to return the full output of scipy.optimize.minimize (Defaults to `False`)
     include_transformed : bool
         Flag for reporting automatically transformed variables in addition
-        to original variables (defaults to False).
+        to original variables (defaults to True).
     progressbar : bool
         Whether or not to display a progress bar in the command line.
     maxeval : int
@@ -164,7 +164,7 @@ def allinmodel(vars, model):
         raise ValueError("Some variables not in the model: " + str(notin))
 
 
-class CostFuncWrapper(object):
+class CostFuncWrapper:
     def __init__(self, maxeval=5000, progressbar=True, logp_func=None, dlogp_func=None):
         self.n_eval = 0
         self.maxeval = maxeval
